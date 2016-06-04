@@ -2,11 +2,10 @@ gibran
 ======
 A minimal web framework	in Go that promises nothing but love and abstraction.
 
-WTH?!
------
-is something I would say every time I saw yet another web framework for Go. Each
-one felt like an _extra horn on a rhinoceros_ or an _extra set of teeth for a
-shark_. It felt excessive, considering how [Go was already designed with excellent
+Why Gibran
+----------
+Go web frameworks often feel like _extra horns on a rhinoceros_ or _extra sets
+of teeth for a shark_. They feel excessive, considering how [Go was already designed with excellent
 idioms to work on an MVC web application](https://medium.com/code-zen/why-i-don-t-use-go-web-frameworks-1087e1facfa4#.chb3c27ad). No one sums this up best than Albert Einstein:
 
 
@@ -14,10 +13,9 @@ idioms to work on an MVC web application](https://medium.com/code-zen/why-i-don-
 > —Albert Einstein
 
 
-A web framework, IMHO, should
-+ bring a sense of structure just enough to be a
-scaffolding or a clean canvas for creativity of the builder.
-+ allow the builder to adopt any components/packages.
+A Go web framework, IMHO, should
++ bring structure just enough to be a clean canvas for creativity of the builder.
++ allow the builder to adopt any packages.
 + save time, and most importantly,
 + be extensible and feels like the language.
 
@@ -25,13 +23,14 @@ scaffolding or a clean canvas for creativity of the builder.
 What Gibran does
 ---------------
 A few things gibran will do for you are:
-+ [Inversion of Control](https://medium.com/code-zen/wtf-is-dependency-injection-1c599231d95c#.yoai7vj6i) -- It helps you write loose-coupling code and encourage the use of subpackages and components.
-+ Structure -- It generates the standard project structure for you, but it won't enforce you to use it. Restructure as desired, but make sure you understand its use of [Brokers](https://medium.com/code-zen/go-interfaces-and-delegation-pattern-f962c138dc1e#.wlmzvpnfo) beforehand.
-+ That's it. Yes, that's it. Trust me, you don't need anything more in Go.
++ [Inversion of Control](https://medium.com/code-zen/wtf-is-dependency-injection-1c599231d95c#.yoai7vj6i) -- It helps you write loose-coupling code and encourage the use of sub-packages.
++ Structure -- It generates the standard project structure for you, but it won't
+enforce you to use it. Restructure as desired, but make sure you understand its use of [interfaces](https://medium.com/code-zen/go-interfaces-and-delegation-pattern-f962c138dc1e#.wlmzvpnfo) beforehand.
++ That's it. Trust me, you don't need anything more in Go.
 
 Getting Started
 ---------------
-To get started, first install gibran with
+To get started, first install with
 ```bash
 
 $ go get github.com/jochasinga/gibran
@@ -53,7 +52,7 @@ $ gibran startproject myapp $HOME/code/jochasinga
 
 ```
 
-The project directory should be created like shown below:
+The project directory should be created as shown below:
 
 ```bash
 
@@ -69,7 +68,7 @@ myapp/
 ```
 
 If you look into `main.go` file, you will see a very minimal scaffolding code to
-let you run the server right away. You may notice something is different actually:
+let you run the server right away. You may notice something is different:
 
 ```go
 
@@ -94,3 +93,17 @@ func main() {
 ```
 
 In the root of the project directory, Run the server with `gibran run` and browser to `localhost:8080` to see the welcome page.
+
+Brokers and Delegates
+---------------------
+gibran generates a `broker` and a `delegate` for every single sub-package.
+A broker is an interface representing all the methods in a package and act as
+the project's global agency for import. A delegate is a struct which implements
+the corresponding broker, thus allowing the package's methods to be useable from
+other packages via the broker.
+By importing brokers instead of the actual package, you are always using abstractions
+instead of directly using the package's namespace to refer to its functions.
+This has a couple of benefits, such as avoid import cycles and easy unit testing.
+
+More to come
+------------
