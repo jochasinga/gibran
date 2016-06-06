@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ var projectStructure = map[string][]string{
 	"main.go":     []string{},
 }
 
+// readPackage is a WalkFunc for readProject
 func readPackage(path string, f os.FileInfo, err error) error {
 	if strings.Contains(f.Name(), "broker") || strings.Contains(f.Name(), "@") {
 		return nil
@@ -39,9 +41,11 @@ func readProject(projectdir string) error {
 	return nil
 }
 
-func createDir(projectDir string, projectMap map[string][]string) error {
+func createDir(projectName, projectDir string, projectMap map[string][]string) error {
+	log.Printf("Creating %s...\n", projectName)
 	for dir, files := range projectMap {
 		fullpath := filepath.Join(projectDir, dir)
+		log.Printf("Creating %s\n", fullpath)
 		if strings.Contains(dir, ".go") {
 			f, err := os.Create(fullpath)
 			if err != nil {
@@ -62,6 +66,7 @@ func createDir(projectDir string, projectMap map[string][]string) error {
 
 		for _, file := range files {
 			dst := filepath.Join(fullpath, file)
+			log.Printf("Creating %s\n", dst)
 			if strings.Contains(file, ".go") {
 				f, err := os.Create(dst)
 				if err != nil {
@@ -80,12 +85,13 @@ func createDir(projectDir string, projectMap map[string][]string) error {
 			}
 		}
 	}
+	log.Println("...Success!")
 	return nil
 }
 
 var (
-	commandname = flag.String("command", "", "Specify the command name.")
-	projectname = flag.String("project", "", "Specify the project name.")
+	//commandname = flag.String("command", "", "Specify the command name.")
+	projectname = flag.String("name", "", "Specify the project name.")
 	rootdir     = flag.String("root", "", "Specify project's root directory.")
 )
 
@@ -93,9 +99,9 @@ func init() {
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage of Gibran CLI:")
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, " gibran startproject <projectName> <projectPath>")
+		fmt.Fprintln(os.Stderr, " gibran startproject -name=<projectName> -root=<projectPath>")
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, " gibran run")
+		fmt.Fprintln(os.Stderr, " gibran run -root=<projectPath>")
 		fmt.Fprintln(os.Stderr, "")
 		flag.PrintDefaults()
 	}
@@ -104,11 +110,11 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if *commandname == "" {
+	if os.Args[1] != "startproject" && os.Args[1] != "run" {
 		flag.Usage()
 		return
 	}
-	if *commandname == "run" {
+	if os.Args[1] == "run" {
 		// parse project's package
 		// create and update brokers
 		// run project with go run
@@ -126,7 +132,10 @@ func main() {
 			}
 		}
 	}
-	if *commandname == "startproject" {
+	if os.Args[1] == "startproject" {
+		if *projectname == "" {
+			*projectname = "myapp"
+		}
 		if *rootdir == "" {
 			root, err := os.Getwd()
 			if err != nil {
@@ -137,7 +146,7 @@ func main() {
 		}
 	}
 	path := filepath.Join(*rootdir, *projectname)
-	err := createDir(path, projectStructure)
+	err := createDir(*projectname, path, projectStructure)
 	if err != nil {
 		panic(err)
 	}
