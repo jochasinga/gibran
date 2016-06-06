@@ -19,8 +19,12 @@ var projectStructure = map[string][]string{
 }
 
 func readPackage(path string, f os.FileInfo, err error) error {
+	if strings.Contains(f.Name(), "broker") || strings.Contains(f.Name(), "@") {
+		return nil
+	}
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
 		fmt.Println(f.Name())
+
 	}
 	return nil
 }
