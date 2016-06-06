@@ -18,13 +18,36 @@ var projectStructure = map[string][]string{
 	"main.go":     []string{},
 }
 
+func readPackage(path string, f os.FileInfo, err error) error {
+	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
+		fmt.Println(f.Name())
+	}
+	return nil
+}
+
+// readPackage reads sub packages of the project and create a
+//relevant delegate and broker for each package.
+func readProject(projectdir string) error {
+	err := filepath.Walk(projectdir, readPackage)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func createDir(projectDir string, projectMap map[string][]string) error {
 	for dir, files := range projectMap {
 		fullpath := filepath.Join(projectDir, dir)
 		if strings.Contains(dir, ".go") {
-			_, err := os.Create(fullpath)
+			f, err := os.Create(fullpath)
 			if err != nil {
 				return err
+			}
+			defer f.Close()
+			txt := []byte("package main")
+			_, err = f.Write(txt)
+			if err != nil {
+				panic(err)
 			}
 		} else {
 			err := os.MkdirAll(fullpath, os.ModePerm)
@@ -36,12 +59,19 @@ func createDir(projectDir string, projectMap map[string][]string) error {
 		for _, file := range files {
 			dst := filepath.Join(fullpath, file)
 			if strings.Contains(file, ".go") {
-				if _, err := os.Create(dst); err != nil {
-					return err
+				f, err := os.Create(dst)
+				if err != nil {
+					panic(err)
+				}
+				defer f.Close()
+				txt := []byte(fmt.Sprintf("package %s", dir))
+				_, err = f.Write(txt)
+				if err != nil {
+					panic(err)
 				}
 			} else {
 				if err := os.Mkdir(dst, os.ModePerm); err != nil {
-					return err
+					panic(err)
 				}
 			}
 		}
@@ -78,6 +108,19 @@ func main() {
 		// parse project's package
 		// create and update brokers
 		// run project with go run
+		if *rootdir == "" {
+			root, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			if err := readProject(root); err != nil {
+				panic(err)
+			}
+		} else {
+			if err := readProject(*rootdir); err != nil {
+				panic(err)
+			}
+		}
 	}
 	if *commandname == "startproject" {
 		if *rootdir == "" {
