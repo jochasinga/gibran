@@ -1,0 +1,28 @@
+package {{.Name}}
+
+type Delegate struct {
+        G map[string][]string
+        VarSet *VarSet
+}
+
+type VarSet struct {
+        {{range .VarSet}}
+          {{.VarName}} {{.VarType}}
+        {{end}}
+}
+
+func (d *Delegate) Vars() *VarSet {
+        return d.VarSet
+}
+
+func (d *Delegate) Add(key, value string) {
+        d.G[key] = append(d.G[key], value)
+}
+
+func (d *Delegate) Del(key string) {
+        delete(d.G, key)
+}
+
+func (d *Delegate) Set(key, value string) {
+        d.G[key] = []string{value}
+}

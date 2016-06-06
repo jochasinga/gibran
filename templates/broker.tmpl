@@ -1,0 +1,36 @@
+package {{.Name}}Broker
+
+import (
+        {{range .Deps}}
+	  "{{.}}"
+	{{end}}
+
+        "{{.PathToPackage}}"
+)
+
+type {{.Name}}Broker interface {
+        // Built-in methods
+        Add(string, string)
+	Del(string)
+	Get(string) string
+	Set(string, string)
+	Vars() *{{.Name}}.VarSet
+
+        // Generated methods
+        {{range .Methods}}
+          {{.Name}}({{.ArgTypes}}) ({{.ReturnTypes}})
+        {{end}}
+}
+
+func New() {{.Name}}Broker {
+        delegate := &{{.Name}}.Delegate{
+	        G: make(map[string][]string),
+		VarSet: &{{.Name}}.VarSet{
+		        {{range .VarSet}}
+			  {{.VarName}}: {{.Name}}.{{.VarName}},
+			{{end}}
+		},
+		
+	}
+        return {{.Name}}Broker(delegate)
+}
