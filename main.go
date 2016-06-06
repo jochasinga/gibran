@@ -89,19 +89,13 @@ func createDir(projectName, projectDir string, projectMap map[string][]string) e
 	return nil
 }
 
-var (
-	//commandname = flag.String("command", "", "Specify the command name.")
-	projectname = flag.String("name", "", "Specify the project name.")
-	rootdir     = flag.String("root", "", "Specify project's root directory.")
-)
-
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "Usage of Gibran CLI:")
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, " gibran startproject -name=<projectName> -root=<projectPath>")
+		fmt.Fprintln(os.Stderr, " gibran startproject <projectName> <projectPath>")
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, " gibran run -root=<projectPath>")
+		fmt.Fprintln(os.Stderr, " gibran run <projectPath>")
 		fmt.Fprintln(os.Stderr, "")
 		flag.PrintDefaults()
 	}
@@ -110,44 +104,106 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if os.Args[1] != "startproject" && os.Args[1] != "run" {
+	switch len(os.Args) {
+	// No arguments provided
+	case 1:
+		fmt.Println("Supply a command...")
 		flag.Usage()
 		return
-	}
-	if os.Args[1] == "run" {
-		// parse project's package
-		// create and update brokers
-		// run project with go run
-		if *rootdir == "" {
-			root, err := os.Getwd()
+	// 1 arguments provided
+	case 2:
+		switch os.Args[1] {
+		default:
+			fmt.Println(os.Args[1])
+			flag.Usage()
+			return
+		case "startproject":
+			projectname := "myapp"
+			rootdir, err := os.Getwd()
 			if err != nil {
 				panic(err)
 			}
-			if err := readProject(root); err != nil {
-				panic(err)
-			}
-		} else {
-			if err := readProject(*rootdir); err != nil {
-				panic(err)
-			}
-		}
-	}
-	if os.Args[1] == "startproject" {
-		if *projectname == "" {
-			*projectname = "myapp"
-		}
-		if *rootdir == "" {
-			root, err := os.Getwd()
+			path := filepath.Join(rootdir, projectname)
+			err = createDir(projectname, path, projectStructure)
 			if err != nil {
 				panic(err)
 			}
+			return
+		case "run":
+			rootdir, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			if err := readProject(rootdir); err != nil {
+				panic(err)
+			}
+			return
+		}
+	// 2 arguments provided
+	case 3:
+		switch os.Args[1] {
+		default:
+			fmt.Println(os.Args[1])
+			flag.Usage()
+			return
+		case "startproject":
+			projectname := os.Args[2]
+			if projectname == "" {
+				projectname = "myapp"
+			}
+			rootdir, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			path := filepath.Join(rootdir, projectname)
+			err = createDir(projectname, path, projectStructure)
+			if err != nil {
+				panic(err)
+			}
+			return
+		case "run":
+			rootdir := os.Args[2]
+			if rootdir == "" {
+				root, err := os.Getwd()
+				if err != nil {
+					panic(err)
+				}
+				rootdir = root
+			}
+			if err := readProject(rootdir); err != nil {
+				panic(err)
+			}
+			return
+		}
 
-			*rootdir = root
+	// 3 arguments provided (likely with startproject <projectName> <projectPath>)
+	case 4:
+		if os.Args[1] != "startproject" {
+			fmt.Println(os.Args[1])
+			flag.Usage()
+			return
 		}
-	}
-	path := filepath.Join(*rootdir, *projectname)
-	err := createDir(*projectname, path, projectStructure)
-	if err != nil {
-		panic(err)
+		projectname := os.Args[2]
+		if projectname == "" {
+			projectname = "myapp"
+		}
+		rootdir := os.Args[3]
+		if rootdir == "" {
+			root, err := os.Getwd()
+			if err != nil {
+				panic(err)
+			}
+			rootdir = root
+		}
+
+		path := filepath.Join(rootdir, projectname)
+		err := createDir(projectname, path, projectStructure)
+		if err != nil {
+			panic(err)
+		}
+		return
+	default:
+		flag.Usage()
+		return
 	}
 }
