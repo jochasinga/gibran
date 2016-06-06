@@ -21,10 +21,17 @@ var projectStructure = map[string][]string{
 
 // readPackage is a WalkFunc for readProject
 func readPackage(path string, f os.FileInfo, err error) error {
+
+	// We want to ignore broker and delegate files and write to them
+	// after having read other package files.
 	if strings.Contains(f.Name(), "broker") || strings.Contains(f.Name(), "@") {
 		return nil
 	}
+
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
+		// TODO: Parse file here and return an *Package
+		// object that can be used to render template.
+		// parseFile(f *os.File) *Package
 		fmt.Println(f.Name())
 
 	}
@@ -41,6 +48,9 @@ func readProject(projectdir string) error {
 	return nil
 }
 
+// createDir create a project directory structure based on the given projectMap
+// TODO: Some schemes that might be interesting including, bare minimum, MVC, Flux, etc.
+// It'd be great to provide users with a couple of structure options.
 func createDir(projectName, projectDir string, projectMap map[string][]string) error {
 	log.Printf("Creating %s...\n", projectName)
 	for dir, files := range projectMap {
