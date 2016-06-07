@@ -28,10 +28,12 @@ func parseFile(path string, f os.FileInfo, err error) error {
 	if strings.Contains(f.Name(), "broker") || strings.Contains(f.Name(), "@") {
 		return nil
 	}
-	fset := token.NewFileSet()
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
-		fmt.Println(f.Name())
-		file, err := parser.ParseFile(fset, f.Name(), nil, 0)
+		fset := token.NewFileSet()
+		if err != nil {
+			return err
+		}
+		file, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {
 			return err
 		}
@@ -39,8 +41,12 @@ func parseFile(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		importpath := filepath.Join(path, f.Name())
-		pkg, err := conf.Check(importpath, fset, []*ast.File{file}, nil)
+		base := filepath.Join(os.Getenv("GOPATH"), "src")
+		rel, err := filepath.Rel(base, path)
+		if err != nil {
+			return err
+		}
+		pkg, err := conf.Check(rel, fset, []*ast.File{file}, nil)
 		if err != nil {
 			return err
 		}
@@ -65,14 +71,6 @@ func readPackage(path string, f os.FileInfo, err error) error {
 		// TODO: Parse file here and return an *Package
 		// object that can be used to render template.
 		fmt.Println(f.Name())
-
-		//fullpath := filepath.Join(path, f.Name())
-		/*
-			err := parseFile(f.Name())
-			if err != nil {
-				return nil
-			}
-		*/
 	}
 	return nil
 }
