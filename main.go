@@ -3,6 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/importer"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,6 +24,34 @@ var projectStructure = map[string][]string{
 	"main.go":     []string{},
 }
 
+func parseFile(path string, f os.FileInfo, err error) error {
+	if strings.Contains(f.Name(), "broker") || strings.Contains(f.Name(), "@") {
+		return nil
+	}
+	fset := token.NewFileSet()
+	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
+		fmt.Println(f.Name())
+		file, err := parser.ParseFile(fset, f.Name(), nil, 0)
+		if err != nil {
+			return err
+		}
+		conf := types.Config{Importer: importer.Default()}
+		if err != nil {
+			return err
+		}
+		importpath := filepath.Join(path, f.Name())
+		pkg, err := conf.Check(importpath, fset, []*ast.File{file}, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Package: %q\n", pkg.Path())
+		fmt.Printf("Name:    %s\n", pkg.Name())
+		fmt.Printf("Imports: %s\n", pkg.Imports())
+		fmt.Printf("Scope:   %s\n", pkg.Scope())
+	}
+	return nil
+}
+
 // readPackage is a WalkFunc for readProject
 func readPackage(path string, f os.FileInfo, err error) error {
 
@@ -31,9 +64,15 @@ func readPackage(path string, f os.FileInfo, err error) error {
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
 		// TODO: Parse file here and return an *Package
 		// object that can be used to render template.
-		// parseFile(f *os.File) *Package
 		fmt.Println(f.Name())
 
+		//fullpath := filepath.Join(path, f.Name())
+		/*
+			err := parseFile(f.Name())
+			if err != nil {
+				return nil
+			}
+		*/
 	}
 	return nil
 }
@@ -42,6 +81,10 @@ func readPackage(path string, f os.FileInfo, err error) error {
 //relevant delegate and broker for each package.
 func readProject(projectdir string) error {
 	err := filepath.Walk(projectdir, readPackage)
+	if err != nil {
+		return err
+	}
+	err = filepath.Walk(projectdir, parseFile)
 	if err != nil {
 		return err
 	}
@@ -65,7 +108,7 @@ func createDir(projectName, projectDir string, projectMap map[string][]string) e
 			txt := []byte("package main")
 			_, err = f.Write(txt)
 			if err != nil {
-				panic(err)
+				return err
 			}
 		} else {
 			err := os.MkdirAll(fullpath, os.ModePerm)
@@ -80,17 +123,17 @@ func createDir(projectName, projectDir string, projectMap map[string][]string) e
 			if strings.Contains(file, ".go") {
 				f, err := os.Create(dst)
 				if err != nil {
-					panic(err)
+					return err
 				}
 				defer f.Close()
 				txt := []byte(fmt.Sprintf("package %s", dir))
 				_, err = f.Write(txt)
 				if err != nil {
-					panic(err)
+					return err
 				}
 			} else {
 				if err := os.Mkdir(dst, os.ModePerm); err != nil {
-					panic(err)
+					return err
 				}
 			}
 		}
@@ -131,21 +174,21 @@ func main() {
 			projectname := "myapp"
 			rootdir, err := os.Getwd()
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			path := filepath.Join(rootdir, projectname)
 			err = createDir(projectname, path, projectStructure)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			return
 		case "run":
 			rootdir, err := os.Getwd()
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			if err := readProject(rootdir); err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			return
 		}
@@ -163,12 +206,12 @@ func main() {
 			}
 			rootdir, err := os.Getwd()
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			path := filepath.Join(rootdir, projectname)
 			err = createDir(projectname, path, projectStructure)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			return
 		case "run":
@@ -176,12 +219,12 @@ func main() {
 			if rootdir == "" {
 				root, err := os.Getwd()
 				if err != nil {
-					panic(err)
+					log.Fatal(err)
 				}
 				rootdir = root
 			}
 			if err := readProject(rootdir); err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			return
 		}
@@ -201,7 +244,7 @@ func main() {
 		if rootdir == "" {
 			root, err := os.Getwd()
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 			rootdir = root
 		}
@@ -209,7 +252,7 @@ func main() {
 		path := filepath.Join(rootdir, projectname)
 		err := createDir(projectname, path, projectStructure)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		return
 	default:
