@@ -29,6 +29,11 @@ func parseFile(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
+		conf := types.Config{Importer: importer.Default()}
+		info := &types.Info{
+			Defs: make(map[*ast.Ident]types.Object),
+			Uses: make(map[*ast.Ident]types.Object),
+		}
 		fset := token.NewFileSet()
 		if err != nil {
 			return err
@@ -37,24 +42,33 @@ func parseFile(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		conf := types.Config{Importer: importer.Default()}
-		if err != nil {
-			return err
-		}
 		base := filepath.Join(os.Getenv("GOPATH"), "src")
 		rel, err := filepath.Rel(base, path)
 		if err != nil {
 			return err
 		}
-		pkg, err := conf.Check(rel, fset, []*ast.File{file}, nil)
+		pkg, err := conf.Check(rel, fset, []*ast.File{file}, info)
 		if err != nil {
 			return err
 		}
+
+		// Test print attributes
 		fmt.Printf("Package: %q\n", pkg.Path())
 		fmt.Printf("Name:    %s\n", pkg.Name())
 		fmt.Printf("Imports: %s\n", pkg.Imports())
 		fmt.Printf("Scope:   %s\n", pkg.Scope())
+
+		// Print out info
+		for id, obj := range info.Defs {
+			fmt.Printf("%s: %q DEFINES %v\n",
+				fset.Position(id.Pos()), id.Name, obj)
+		}
+		for id, obj := range info.Uses {
+			fmt.Printf("%s: %q USES %v\n",
+				fset.Position(id.Pos()), id.Name, obj)
+		}
 	}
+
 	return nil
 }
 
@@ -82,6 +96,8 @@ func readProject(projectdir string) error {
 	if err != nil {
 		return err
 	}
+
+	// TODO: Skip the main package
 	err = filepath.Walk(projectdir, parseFile)
 	if err != nil {
 		return err
