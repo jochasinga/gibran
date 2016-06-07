@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -8,10 +9,12 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 var projectStructure = map[string][]string{
@@ -22,6 +25,46 @@ var projectStructure = map[string][]string{
 	"tests":       []string{},
 	"views":       []string{"@.go", "views.go"},
 	"main.go":     []string{},
+}
+
+type tmplConfig struct {
+	Path       string
+	Src        string
+	Name       string
+	ReadWriter io.ReadWriter
+}
+
+// writeTmplWith takes a data struct and use the config information
+// to write the corresponding template to the appropriate writer.
+func writeTmplWith(data interface{}, config *tmplConfig) error {
+	if config == nil {
+		return errors.New("tmplConfig is nil")
+	}
+	t := template.New(config.Name)
+	if config.Path != "" {
+		tmp, err := t.ParseFiles(config.Path)
+		if err != nil {
+			return err
+		}
+		t = tmp
+	} else {
+		if config.Src == "" {
+			return errors.New("tmplConfig: Path and Src empty")
+		}
+		tmp, err := t.Parse(config.Src)
+		if err != nil {
+			return err
+		}
+		t = tmp
+	}
+	if config.ReadWriter == nil {
+		return errors.New("tmplConfig: Writer is nil")
+	}
+	err := t.Execute(config.ReadWriter, data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func parseFile(path string, f os.FileInfo, err error) error {
