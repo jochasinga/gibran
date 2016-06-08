@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -32,6 +33,11 @@ type tmplConfig struct {
 	Src        string
 	Name       string
 	ReadWriter io.ReadWriter
+}
+
+type tmplModel struct {
+	Package *types.Package
+	Info    *types.Info
 }
 
 // writeTmplWith takes a data struct and use the config information
@@ -72,11 +78,14 @@ func parseFile(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 	if !f.IsDir() && strings.Contains(f.Name(), ".go") {
+		tmplModel := &tmplModel{}
+		tmplConf := &tmplConfig{}
 		conf := types.Config{Importer: importer.Default()}
 		info := &types.Info{
 			Defs: make(map[*ast.Ident]types.Object),
 			Uses: make(map[*ast.Ident]types.Object),
 		}
+
 		fset := token.NewFileSet()
 		if err != nil {
 			return err
@@ -85,33 +94,65 @@ func parseFile(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		base := filepath.Join(os.Getenv("GOPATH"), "src")
-		rel, err := filepath.Rel(base, path)
+
+		// Get the "github.com/jochasinga/packagename" portion
+		prefix := filepath.Join(os.Getenv("GOPATH"), "src")
+		rel, err := filepath.Rel(prefix, path)
 		if err != nil {
 			return err
 		}
 		pkg, err := conf.Check(rel, fset, []*ast.File{file}, info)
 		if err != nil {
+			// Just a warning print because even with an error
+			// the pkg and info are not entirely nil.
 			return err
 		}
 
 		// Test print attributes
-		fmt.Printf("Package: %q\n", pkg.Path())
-		fmt.Printf("Name:    %s\n", pkg.Name())
-		fmt.Printf("Imports: %s\n", pkg.Imports())
-		fmt.Printf("Scope:   %s\n", pkg.Scope())
+		/*
+			fmt.Printf("Package: %q\n", pkg.Path())
+			fmt.Printf("Name:    %s\n", pkg.Name())
+			fmt.Printf("Imports: %s\n", pkg.Imports())
+			fmt.Printf("Scope:   %s\n", pkg.Scope())
 
-		// Print out info
-		for id, obj := range info.Defs {
-			fmt.Printf("%s: %q DEFINES %v\n",
-				fset.Position(id.Pos()), id.Name, obj)
+			// Print out info
+			for id, obj := range info.Defs {
+				fmt.Printf("%s: %q DEFINES %v\n",
+					fset.Position(id.Pos()), id.Name, obj)
+			}
+			for id, obj := range info.Uses {
+				fmt.Printf("%s: %q USES %v\n",
+					fset.Position(id.Pos()), id.Name, obj)
+			}
+		*/
+
+		temp := `
+                        {{with .Package}}
+                        //!+ Path: "{{.Path}}"
+                        package {{.Name}}
+
+                        import (
+                                {{range .Imports}}
+                                  "{{.Name -}}"
+                                {{end}}
+                        )
+                        {{end}}
+                        {{with .Info}}
+                        {{range $id, $obj := .Uses}}
+                          {{$id}} {{$obj -}}
+                        {{end}}
+                        {{end}}
+                        `
+		tmplModel.Package = pkg
+		tmplModel.Info = info
+		tmplConf.Src = temp
+		tmplConf.ReadWriter = new(bytes.Buffer)
+		err = writeTmplWith(tmplModel, tmplConf)
+		if err != nil {
+			return err
 		}
-		for id, obj := range info.Uses {
-			fmt.Printf("%s: %q USES %v\n",
-				fset.Position(id.Pos()), id.Name, obj)
-		}
+		fmt.Println(tmplConf.ReadWriter)
 	}
-
 	return nil
 }
 
@@ -164,6 +205,9 @@ func createDir(projectName, projectDir string, projectMap map[string][]string) e
 			defer f.Close()
 			txt := []byte("package main")
 			_, err = f.Write(txt)
+			if err != nil {
+				return err
+			}
 			if err != nil {
 				return err
 			}
