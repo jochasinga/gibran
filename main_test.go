@@ -15,24 +15,24 @@ type mockPackage struct {
 }
 
 const temp = `
-        //!+ Path: {{call .Path}}
+        //!+ Path: "{{call .Path}}"
         package {{call .Name}}
 
         import (
                 {{range call .Imports}}
-                {{call .Name -}}
+                  "{{call .Name -}}"
                 {{end}}
         )`
 
 func TestWriteTemplate(t *testing.T) {
 	expect := `
-        //!+ Path: foo/bar/baz
+        //!+ Path: "foo/bar/baz"
         package melancholy
 
         import (
 
-                packageA
-                packageB
+                "packageA"
+                "packageB"
         )`
 	config := &tmplConfig{
 		Src:        temp,
